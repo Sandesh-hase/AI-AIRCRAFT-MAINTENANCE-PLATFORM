@@ -1,0 +1,24 @@
+# -----------------------------------------------------------------------------
+# Backend Service
+#
+# Exposes the FastAPI backend outside the Kubernetes cluster.
+# AWS automatically provisions an Elastic Load Balancer.
+# -----------------------------------------------------------------------------
+
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: maintenance-backend
+
+spec:
+  selector:
+    app: maintenance-backend
+
+  type: LoadBalancer
+
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 8000

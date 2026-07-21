@@ -1,0 +1,43 @@
+# -----------------------------------------------------------------------------
+# Backend Deployment
+#
+# A Deployment ensures the desired number of backend pods are always running.
+# If a pod crashes, Kubernetes automatically recreates it.
+# -----------------------------------------------------------------------------
+
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: maintenance-backend
+  labels:
+    app: maintenance-backend
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: maintenance-backend
+
+  template:
+    metadata:
+      labels:
+        app: maintenance-backend
+
+    spec:
+      containers:
+        - name: maintenance-backend
+
+          # Docker image stored in Amazon ECR
+          image: ${BACKEND_IMAGE}
+
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 8000
+
+          # Load AWS credentials from Kubernetes Secret
+          envFrom:
+            - secretRef:
+                name: aws-credentials

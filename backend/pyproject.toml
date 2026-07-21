@@ -1,0 +1,26 @@
+[project]
+name = "ai-aircraft-maintenance-platform"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "boto3>=1.43.37",
+    "chromadb>=1.5.9",
+    "docling>=2.107.0",
+    "fastapi>=0.115.0",
+    "jupyter>=1.1.1",
+    "numpy>=2.5.0",
+    "openpyxl>=3.1.5",
+    "pandas>=3.0.3",
+    "python-multipart>=0.0.9",
+    "sentence-transformers>=5.6.0",
+    "uvicorn>=0.30.0",
+    "python-dotenv>=1.0.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

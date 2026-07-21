@@ -1,0 +1,168 @@
+name: Deploy AI Aircraft Maintenance Platform
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+
+  deploy:
+
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      BACKEND_IMAGE: ${{ secrets.BACKEND_IMAGE }}
+      FRONTEND_IMAGE: ${{ secrets.FRONTEND_IMAGE }}
+      EKS_CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
+
+    steps:
+
+      # ----------------------------------------------------
+      # Checkout Repository
+      # ----------------------------------------------------
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # ----------------------------------------------------
+      # Configure AWS Credentials
+      # ----------------------------------------------------
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # ----------------------------------------------------
+      # Login to Amazon ECR
+      # ----------------------------------------------------
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # ----------------------------------------------------
+      # Build Backend Docker Image
+      # ----------------------------------------------------
+
+      - name: Build Backend Image
+        run: |
+          docker build \
+          -t maintenance-backend \
+          ./backend
+
+      # ----------------------------------------------------
+      # Tag Backend Image
+      # ----------------------------------------------------
+
+      - name: Tag Backend Image
+        run: |
+          docker tag maintenance-backend:latest $BACKEND_IMAGE
+
+      # ----------------------------------------------------
+      # Push Backend Image
+      # ----------------------------------------------------
+
+      - name: Push Backend Image
+        run: |
+          docker push $BACKEND_IMAGE
+
+      # ----------------------------------------------------
+      # Build Frontend Docker Image
+      # ----------------------------------------------------
+
+      - name: Build Frontend Image
+        run: |
+          docker build \
+          -t maintenance-frontend \
+          ./frontend
+
+      # ----------------------------------------------------
+      # Tag Frontend Image
+      # ----------------------------------------------------
+
+      - name: Tag Frontend Image
+        run: |
+          docker tag maintenance-frontend:latest $FRONTEND_IMAGE
+
+      # ----------------------------------------------------
+      # Push Frontend Image
+      # ----------------------------------------------------
+
+      - name: Push Frontend Image
+        run: |
+          docker push $FRONTEND_IMAGE
+
+      # ----------------------------------------------------
+      # Configure kubectl
+      # ----------------------------------------------------
+
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig \
+          --region $AWS_REGION \
+          --name $EKS_CLUSTER_NAME
+
+      # ----------------------------------------------------
+      # Replace Backend Image
+      # ----------------------------------------------------
+
+      - name: Update Backend Manifest
+        run: |
+          sed -i "s|\${BACKEND_IMAGE}|$BACKEND_IMAGE|g" kubernetes/backend-deployment.yaml
+
+      # ----------------------------------------------------
+      # Replace Frontend Image
+      # ----------------------------------------------------
+
+      - name: Update Frontend Manifest
+        run: |
+          sed -i "s|\${FRONTEND_IMAGE}|$FRONTEND_IMAGE|g" kubernetes/frontend-deployment.yaml
+
+      # ----------------------------------------------------
+      # Create / Update Kubernetes Secret
+      # ----------------------------------------------------
+
+      - name: Create AWS Credentials Secret
+        run: |
+          kubectl create secret generic aws-credentials \
+            --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} \
+            --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
+            --from-literal=AWS_REGION=${{ secrets.AWS_REGION }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+            
+      # ----------------------------------------------------
+      # Deploy Kubernetes Resources
+      # ----------------------------------------------------
+
+      - name: Deploy to Amazon EKS
+        run: |
+          kubectl apply -f kubernetes/
+
+      # ----------------------------------------------------
+      # Verify Deployment
+      # ----------------------------------------------------
+
+      - name: Wait for Backend
+        run: |
+          kubectl rollout status deployment/maintenance-backend
+
+      - name: Wait for Frontend
+        run: |
+          kubectl rollout status deployment/maintenance-frontend
+
+      # ----------------------------------------------------
+      # Verify Pods
+      # ----------------------------------------------------
+
+      - name: List Resources
+        run: |
+          kubectl get deployments
+          kubectl get pods
+          kubectl get svc

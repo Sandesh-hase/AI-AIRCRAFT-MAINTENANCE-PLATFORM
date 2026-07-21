@@ -1,0 +1,37 @@
+# -----------------------------------------------------------------------------
+# Frontend Deployment
+#
+# Deploys the React frontend application.
+# Kubernetes pulls the Docker image from Amazon ECR.
+# -----------------------------------------------------------------------------
+
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: maintenance-frontend
+  labels:
+    app: maintenance-frontend
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: maintenance-frontend
+
+  template:
+    metadata:
+      labels:
+        app: maintenance-frontend
+
+    spec:
+      containers:
+        - name: maintenance-frontend
+
+          image: ${FRONTEND_IMAGE}
+
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 3000
